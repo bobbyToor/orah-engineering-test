@@ -19,3 +19,6 @@ front-end/dist
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+back-end/package-lock.json
+back-end/backend-test.db

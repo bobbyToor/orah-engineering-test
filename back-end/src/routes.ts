@@ -1,7 +1,9 @@
 import { StudentController } from "./controller/student-controller"
+import { GroupController } from "./controller/group-controller"
 import { RollController } from "./controller/roll-controller"
 
 export const Routes = [
+  /* student routes */
   {
     method: "get",
     route: "/student/get-all",
@@ -32,6 +34,46 @@ export const Routes = [
     controller: StudentController,
     action: "removeStudent",
   },
+
+  /* group routes */
+  {
+    method: "get",
+    route: "/group/get-all",
+    controller: GroupController,
+    action: "allGroups",
+  },
+  {
+    method: "post",
+    route: "/group/create",
+    controller: GroupController,
+    action: "createGroup",
+  },
+  {
+    method: "put",
+    route: "/group/update",
+    controller: GroupController,
+    action: "updateGroup",
+  },
+  {
+    method: "delete",
+    route: "/group/delete/:id",
+    controller: GroupController,
+    action: "removeGroup",
+  },
+  {
+    method: "get",
+    route: "/group/get-students/:id",
+    controller: GroupController,
+    action: "getGroupStudents",
+  },
+  {
+    method: "get",
+    route: "/group/run-filters",
+    controller: GroupController,
+    action: "runGroupFilters",
+  },
+
+  /* roll routes */
   {
     method: "get",
     route: "/roll/get-all",
@@ -58,7 +100,7 @@ export const Routes = [
   },
   {
     method: "delete",
-    route: "/roll/delete",
+    route: "/roll/delete/:id",
     controller: RollController,
     action: "removeRoll",
   },
@@ -79,5 +121,5 @@ export const Routes = [
     route: "/roll/update-student-roll-state",
     controller: RollController,
     action: "updateStudentRollState",
-  }
+  },
 ]

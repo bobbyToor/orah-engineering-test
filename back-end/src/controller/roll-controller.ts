@@ -41,8 +41,9 @@ export class RollController {
   }
 
   async removeRoll(request: Request, response: Response, next: NextFunction) {
-    let rollToRemove = await this.rollRepository.findOne(request.params.id)
-    await this.rollRepository.remove(rollToRemove)
+    await this.rollRepository.delete({ id: request.params.id })
+
+    return {}
   }
 
   async getRoll(request: Request, response: Response, next: NextFunction) {

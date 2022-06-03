@@ -27,7 +27,7 @@ export class StudentController {
   async updateStudent(request: Request, response: Response, next: NextFunction) {
     const { body: params } = request
 
-    this.studentRepository.findOne(params.id).then((student) => {
+    return this.studentRepository.findOne(params.id).then((student) => {
       const updateStudentInput: UpdateStudentInput = {
         id: params.id,
         first_name: params.first_name,
@@ -42,6 +42,6 @@ export class StudentController {
 
   async removeStudent(request: Request, response: Response, next: NextFunction) {
     let studentToRemove = await this.studentRepository.findOne(request.params.id)
-    await this.studentRepository.remove(studentToRemove)
+    return this.studentRepository.remove(studentToRemove)
   }
 }
