@@ -44,7 +44,7 @@ export class Group {
     this.roll_states = input.roll_states
     this.incidents = input.incidents
     this.ltmt = input.ltmt
-    this.run_at = undefined
+    this.run_at = null
     this.student_count = 0
   }
 }

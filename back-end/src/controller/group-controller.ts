@@ -1,4 +1,4 @@
-import { getRepository, getManager, LessThan, MoreThan, In } from "typeorm"
+import { getRepository, getManager, MoreThan, In } from "typeorm"
 import { NextFunction, Request, Response } from "express"
 import { Group } from "../entity/group.entity"
 import { GroupStudent } from "../entity/group-student.entity"
@@ -97,16 +97,16 @@ export class GroupController {
       const groupRepository = transaction.getRepository(Group)
       const groupStudentRepository = transaction.getRepository(GroupStudent)
       const studentRollStateRepository = transaction.getRepository(StudentRollState)
-      const studentRepository = transaction.getRepository(Student)
       const rollRepository = transaction.getRepository(Roll)
 
-      // 1. Clear out the groups (delete all the students from the groups)
+      /* Clear out the groups (delete all the students from the groups) */
       await groupStudentRepository.clear()
-
-      // 2. For each group, query the student rolls to see which students match the filter for the group
 
       /* fetch all groups */
       const groups = await groupRepository.find()
+
+      /* collect all group students */
+      const groupStudentsInput: CreateGroupStudentInput[] = []
 
       for await (const group of groups) {
         const groupId = group.id
@@ -120,12 +120,11 @@ export class GroupController {
         const matchingRollsIds = matchingRolls.map((roll) => roll.id)
 
         /* fetch student roll states from roll ids and roll states */
-        const rollStates = group.roll_states
-        const rolls = rollStates.split(",")
+        const rolls = group.roll_states.split(",")
 
         const studentRollStates = await studentRollStateRepository.find({ roll_id: In(matchingRollsIds), state: In(rolls) })
 
-        /* collect total incidents */
+        /* collect total incident count per student */
         const incidentsObj = {}
 
         for (const studentRollState of studentRollStates) {
@@ -135,7 +134,7 @@ export class GroupController {
           incidentsObj[studentRollState.student_id] += 1
         }
 
-        /* filter based on incidents */
+        /* filter based on incident count & ltmt */
         const ltmt = group.ltmt
         const incidents = group.incidents
 
@@ -155,21 +154,37 @@ export class GroupController {
           }
         }
 
-        const groupStudents: GroupStudent[] = []
+        /* create group student input object */
+        for (const studentId in filteredStudents) {
+          let totalIncidents = filteredStudents[studentId]
 
-        // for (let studentId in filteredStudents) {
-        //   let totalIncidents = filteredStudents[studentId]
+          const createGroupStudentInput: CreateGroupStudentInput = {
+            student_id: parseInt(studentId),
+            group_id: groupId,
+            incident_count: totalIncidents,
+          }
 
-        //   const createGroupStudentInput: CreateGroupStudentInput = {
-        //     student_id: studentId,
-        //     group_id: groupId,
-        //     incident_count: totalIncidents,
-        //   }
-        //   groupStudents.push({})
-        // }
+          groupStudentsInput.push(createGroupStudentInput)
+        }
+
+        /* update student count & group runtime */
+        const groupStudentCount = Object.keys(filteredStudents).length
+        const groupRunTime = new Date().toDateString()
+
+        await this.groupRepository.update({ id: groupId }, { run_at: groupRunTime, student_count: groupStudentCount })
       }
 
-      // 3. Add the list of students that match the filter to the group
+      /* save all group students at once */
+      const groupStudents = groupStudentsInput.map((input) => {
+        const groupStudent = new GroupStudent()
+        groupStudent.prepareToCreate(input)
+
+        return groupStudent
+      })
+
+      await groupStudentRepository.save(groupStudents)
+
+      return {}
     })
   }
 }
