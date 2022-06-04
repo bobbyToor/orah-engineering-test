@@ -22,3 +22,5 @@ yarn-error.log*
 
 back-end/package-lock.json
 back-end/backend-test.db
+
+back-end/backend-test-sample.db

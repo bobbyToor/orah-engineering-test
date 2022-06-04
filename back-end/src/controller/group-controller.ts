@@ -5,7 +5,7 @@ import { GroupStudent } from "../entity/group-student.entity"
 import { Student } from "../entity/student.entity"
 import { StudentRollState } from "../entity/student-roll-state.entity"
 import { Roll } from "../entity/roll.entity"
-import { CreateGroupInput, UpdateGroupInput } from "../interface/group.interface"
+import { CreateGroupInput } from "../interface/group.interface"
 import { CreateGroupStudentInput } from "../interface/group-student.interface"
 
 export class GroupController {
@@ -41,22 +41,22 @@ export class GroupController {
 
     const { body: params } = request
 
-    return this.groupRepository.findOne(params.id).then((group) => {
-      if (!group) return {}
-
-      const updateGroupInput: UpdateGroupInput = {
-        id: params.id,
+    await this.groupRepository.update(
+      { id: params.id },
+      {
         name: params.name,
         number_of_weeks: params.number_of_weeks,
         roll_states: params.roll_states,
         incidents: params.incidents,
         ltmt: params.ltmt,
+
+        /* reset these on update */
+        student_count: 0,
+        run_at: null,
       }
+    )
 
-      group.prepareToUpdate(updateGroupInput)
-
-      return this.groupRepository.save(group)
-    })
+    return { id: params.id }
   }
 
   async removeGroup(request: Request, response: Response, next: NextFunction) {
@@ -64,14 +64,15 @@ export class GroupController {
 
     await this.groupRepository.delete({ id: request.params.id })
 
-    return {}
+    return { id: request.params.id }
   }
 
   async getGroupStudents(request: Request, response: Response, next: NextFunction) {
     /* 
       ideal way to do this would be to 
       create a many to one relationship 
-      between student_group and student tables 
+      between student_group and student tables
+      (this will reduce 2 db calls to 1)
     */
     const groupId = request.params.id
 
@@ -105,9 +106,10 @@ export class GroupController {
       /* fetch all groups */
       const groups = await groupRepository.find()
 
-      /* collect all group students */
+      /* collect all students to insert at once */
       const groupStudentsInput: CreateGroupStudentInput[] = []
 
+      /* iterate thriugh all groups to generate matching roll students */
       for await (const group of groups) {
         const groupId = group.id
 
@@ -116,7 +118,7 @@ export class GroupController {
         const numberOfWeeks = group.number_of_weeks
         queryDate.setDate(queryDate.getDate() - numberOfWeeks * 7)
 
-        const matchingRolls = await rollRepository.find({ completed_at: MoreThan(queryDate) })
+        const matchingRolls = await rollRepository.find({ completed_at: MoreThan(queryDate.toISOString()) })
         const matchingRollsIds = matchingRolls.map((roll) => roll.id)
 
         /* fetch student roll states from roll ids and roll states */
@@ -167,9 +169,9 @@ export class GroupController {
           groupStudentsInput.push(createGroupStudentInput)
         }
 
-        /* update student count & group runtime */
+        /* update student count & group runtime for the group */
         const groupStudentCount = Object.keys(filteredStudents).length
-        const groupRunTime = new Date().toDateString()
+        const groupRunTime = new Date().toISOString()
 
         await this.groupRepository.update({ id: groupId }, { run_at: groupRunTime, student_count: groupStudentCount })
       }
@@ -182,9 +184,7 @@ export class GroupController {
         return groupStudent
       })
 
-      await groupStudentRepository.save(groupStudents)
-
-      return {}
+      return groupStudentRepository.save(groupStudents)
     })
   }
 }
